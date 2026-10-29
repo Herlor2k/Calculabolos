@@ -353,12 +353,13 @@ dialog::backdrop{background:rgba(42,17,11,.55)}
   <div class="dlg-h"><h3>Qual margem usar?</h3><button type="button" data-close aria-label="Fechar">×</button></div>
   <div class="dlg-b">
     <p>A margem aqui é o lucro somado em cima do custo total. Com custo de R$ 50 e margem de 50%, o lucro é R$ 25 e o preço fica R$ 75.</p>
+    <p>Ao escolher o tipo de bolo, a calculadora já aplica a margem sugerida. Você pode trocar a qualquer momento nos botões ou digitando outro valor.</p>
     <table>
-      <tr><th>Tipo de bolo</th><th>Faixa sugerida</th></tr>
-      <tr><td>Simples</td><td>30% a 50%</td></tr>
-      <tr><td>Recheado</td><td>40% a 60%</td></tr>
-      <tr><td>Decorado</td><td>50% a 70%</td></tr>
-      <tr><td>Premium</td><td>60% ou mais</td></tr>
+      <tr><th>Tipo de bolo</th><th>Margem aplicada</th></tr>
+      <tr><td>Simples</td><td>30%</td></tr>
+      <tr><td>Recheado</td><td>40%</td></tr>
+      <tr><td>Decorado</td><td>50%</td></tr>
+      <tr><td>Premium</td><td>60%</td></tr>
     </table>
     <p class="note">Quanto mais trabalho e detalhe, maior a margem. Compare o resultado com os preços da sua região antes de fechar o valor.</p>
   </div>
@@ -370,11 +371,12 @@ dialog::backdrop{background:rgba(42,17,11,.55)}
   const brl = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const parse = s => { s = String(s||'').trim().replace(/[^\d,.-]/g,''); if(s.includes(',')) s = s.replace(/\./g,'').replace(',','.'); const v = parseFloat(s); return isFinite(v) && v > 0 ? v : 0; };
   const fmt = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const HINTS = {simples:'Para bolo simples, uma margem entre 30% e 50% costuma funcionar bem.',recheado:'Para bolo recheado, pense em uma margem entre 40% e 60%.',decorado:'Bolo decorado leva mais tempo e detalhe: use entre 50% e 70%.',premium:'Bolo premium é trabalho de artista: 60% ou mais.'};
+  const MARGEM_TIPO = {simples:30,recheado:40,decorado:50,premium:60};
+  const NOME_TIPO = {simples:'bolo simples',recheado:'bolo recheado',decorado:'bolo decorado',premium:'bolo premium'};
   const TIPOS = {simples:'Bolo simples',recheado:'Bolo recheado',decorado:'Bolo decorado',premium:'Bolo premium'};
   const SIZES = {p:'Pequeno (20×10 cm)',m:'Médio (30×20 cm)',g:'Grande (40×30 cm)',xg:'Extra grande (50×30 cm)'};
-  const DEFAULTS = {tipo:'simples',tamanho:'p',porcoes:8,margem:50,custos:{'c-ing':'25,00','c-emb':'5,00','c-gas':'3,00','c-mao':'15,00','c-out':'2,00'}};
-  const KEY = 'calculabolos-v1';
+  const DEFAULTS = {tipo:'simples',tamanho:'p',porcoes:8,margem:30,custos:{'c-ing':'25,00','c-emb':'5,00','c-gas':'3,00','c-mao':'15,00','c-out':'2,00'}};
+  const KEY = 'calculabolos-v2';
   let state = JSON.parse(JSON.stringify(DEFAULTS));
 
   try { const saved = JSON.parse(localStorage.getItem(KEY)); if (saved && saved.custos) state = Object.assign(state, saved); } catch(e) {}
@@ -394,7 +396,10 @@ dialog::backdrop{background:rgba(42,17,11,.55)}
     $('#porcoes').value = state.porcoes;
     $('#margem').value = state.margem;
     Object.entries(state.custos).forEach(([id,v]) => { const el = document.getElementById(id); if (document.activeElement !== el) el.value = v; });
-    $('#hint').textContent = HINTS[state.tipo];
+    const sug = MARGEM_TIPO[state.tipo];
+    $('#hint').textContent = Number(state.margem) === sug
+      ? `Margem de ${sug}% aplicada para ${NOME_TIPO[state.tipo]}. Se quiser, escolha outra acima.`
+      : `A sugestão para ${NOME_TIPO[state.tipo]} é ${sug}%. Você está usando ${state.margem}%.`;
 
     const custo = Object.values(state.custos).reduce((s,v) => s + parse(v), 0);
     const m = Math.max(0, Number(state.margem) || 0) / 100;
@@ -421,7 +426,7 @@ dialog::backdrop{background:rgba(42,17,11,.55)}
       const b = ev.target.closest('[role="radio"]'); if (!b) return;
       if (group === 'tamanho') { state.tamanho = b.dataset.value; state.porcoes = Number(b.dataset.portions); }
       else if (group === 'margem') state.margem = Number(b.dataset.value);
-      else state[group] = b.dataset.value;
+      else { state[group] = b.dataset.value; if (group === 'tipo') state.margem = MARGEM_TIPO[state.tipo]; }
       render();
     });
     g.addEventListener('keydown', ev => {
